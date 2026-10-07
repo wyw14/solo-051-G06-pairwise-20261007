@@ -104,5 +104,31 @@ func (s *Service) RunLayer(ctx context.Context, runtime *Runtime, runID model.ID
 	if _, err := runtime.Capture(sample, layer.Number); err != nil {
 		return err
 	}
+	if err := s.recordCarrierLayer(runID, layer.Number); err != nil {
+		return err
+	}
+	return nil
+}
+
+// recordCarrierLayer advances the carrier custody chain for a coated layer:
+// the bound carrier enters the chamber on its first layer, then the layer is
+// marked complete.
+func (s *Service) recordCarrierLayer(runID model.ID, layer int) error {
+	carrierID, ok := s.Link.ActiveCarrier(runID)
+	if !ok {
+		return nil
+	}
+	state, found := s.Link.State(carrierID)
+	if !found {
+		return nil
+	}
+	if !model.StageAtLeast(state.Stage, model.StageChamberIn) {
+		if _, err := s.CarrierEnterChamber(carrierID, runID, "", "system"); err != nil {
+			return err
+		}
+	}
+	if _, err := s.Link.LayerComplete(carrierID, runID, layer); err != nil {
+		return err
+	}
 	return nil
 }

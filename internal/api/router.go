@@ -32,5 +32,14 @@ func NewRouter(svc *service.Service) http.Handler {
 	r.Get("/api/snapshot", restoreSnapshot(svc, book))
 	r.Get("/api/metrics", metricsStatus(svc, runtime))
 	r.Put("/api/recipes/{recipeID}", recipeEdit(svc))
+	r.Get("/api/carriers", listCarriers(svc))
+	r.Get("/api/carriers/{carrierID}", carrierStatus(svc))
+	r.Post("/api/carriers/{carrierID}/chamber", carrierEnter(svc))
+	r.Post("/api/carriers/{carrierID}/layers", carrierLayer(svc))
+	r.Post("/api/carriers/{carrierID}/inspection", carrierInspect(svc))
+	r.Post("/api/carriers/{carrierID}/handoff/fail", carrierHandoffFail(svc))
+	r.Post("/api/carriers/{carrierID}/handoff/confirm", carrierHandoffConfirm(svc))
+	r.Post("/api/carriers/{carrierID}/confirm-site", carrierConfirmSite(svc))
+	r.Post("/api/carriers/{carrierID}/unload", carrierUnload(svc))
 	return r
 }

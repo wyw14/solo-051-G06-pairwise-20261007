@@ -57,6 +57,13 @@ func (s *Service) Recover(ctx context.Context, runtime *Runtime, runID model.ID)
 	value.State = model.Cooling
 	s.Runs.Add(value)
 	report = appendRecovery(report, "set_cooling", nil)
+	// Recovery proves nothing about where the carrier physically is. Force the
+	// bound carrier through on-site confirmation before any further motion.
+	if carrierID, ok := s.Link.ActiveCarrier(runID); ok {
+		if s.Link.RequireSiteConfirmation(carrierID) {
+			runtime.Timeline.Add(runID, "carrier", "site confirmation required at recovery")
+		}
+	}
 	report.Recovered = shutterErr == nil && cooldownErr == nil && journalErr == nil
 	runtime.Timeline.Add(runID, "recovery", fmt.Sprintf("recovered=%t", report.Recovered))
 	return report

@@ -20,6 +20,7 @@ type Service struct {
 	Recipes  *recipe.Store
 	Drafts   *recipe.DraftBook
 	Carrier  *substrate.Carrier
+	Link     *substrate.Link
 	Chamber  *chamber.Chamber
 	Vacuum   *vacuum.Controller
 	Source   *source.Controller
@@ -35,13 +36,16 @@ func New() *Service {
 	if dir == "" {
 		dir = "data"
 	}
-	return &Service{Runs: run.NewRegistry(), Recipes: recipes, Drafts: recipe.NewDraftBook(), Carrier: substrate.NewCarrier(), Chamber: chamber.New("coat-01"), Vacuum: vacuum.NewController(), Source: source.NewController(100), Rotation: rotation.NewController(), Journal: journal.New(dir)}
+	store := journal.New(dir)
+	link := substrate.NewLink(store)
+	_ = link.Replay()
+	return &Service{Runs: run.NewRegistry(), Recipes: recipes, Drafts: recipe.NewDraftBook(), Carrier: substrate.NewCarrier(), Link: link, Chamber: chamber.New("coat-01"), Vacuum: vacuum.NewController(), Source: source.NewController(100), Rotation: rotation.NewController(), Journal: store}
 }
 func (s *Service) RecipesList() []*model.Recipe { return s.Recipes.List() }
 func (s *Service) RunsList() []*model.Run       { return s.Runs.List() }
-func (s *Service) Start(ctx context.Context, batch string, recipeID model.ID) (*model.Run, error) {
-	coordinator := &run.Coordinator{Registry: s.Runs, Recipes: s.Recipes, Carrier: s.Carrier, Chamber: s.Chamber, Vacuum: s.Vacuum, Journal: s.Journal}
-	return coordinator.Start(ctx, batch, recipeID)
+func (s *Service) Start(ctx context.Context, carrierID, batch string, recipeID model.ID) (*model.Run, error) {
+	coordinator := &run.Coordinator{Registry: s.Runs, Recipes: s.Recipes, Carrier: s.Carrier, Link: s.Link, Chamber: s.Chamber, Vacuum: s.Vacuum, Journal: s.Journal}
+	return coordinator.Start(ctx, carrierID, batch, recipeID)
 }
 func (s *Service) UpdateDraft(id model.ID, layer model.Layer) error {
 	if !s.Drafts.UpdateLayer(id, layer) {

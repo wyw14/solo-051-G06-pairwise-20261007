@@ -16,18 +16,32 @@ type Coordinator struct {
 	Registry *Registry
 	Recipes  *recipe.Store
 	Carrier  *substrate.Carrier
+	Link     *substrate.Link
 	Chamber  *chamber.Chamber
 	Vacuum   *vacuum.Controller
 	Journal  *journal.Store
 }
 
-func (c *Coordinator) Start(ctx context.Context, batch string, recipeID model.ID) (*model.Run, error) {
+func (c *Coordinator) Start(ctx context.Context, carrierID, batch string, recipeID model.ID) (*model.Run, error) {
+	if carrierID == "" {
+		carrierID = "carrier-" + batch
+	}
 	if _, err := c.Recipes.Active(recipeID); err != nil {
 		return nil, err
 	}
 	run := &model.Run{ID: model.NewID(), Batch: batch, RecipeID: recipeID, State: model.Loading, CreatedAt: timeNow(), UpdatedAt: timeNow()}
 	if err := c.Carrier.Load(batch, run.ID); err != nil {
 		return nil, err
+	}
+	if c.Link != nil {
+		if _, err := c.Link.LoadBatch(carrierID, batch, "load_port", "system"); err != nil {
+			c.Carrier.Unload(batch)
+			return nil, err
+		}
+		if _, err := c.Link.BindRun(carrierID, run.ID, "load_port", "system"); err != nil {
+			c.Carrier.Unload(batch)
+			return nil, err
+		}
 	}
 	c.Registry.Add(run)
 	if !c.Registry.Transition(run.ID, model.Pumping) {
