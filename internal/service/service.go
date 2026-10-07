@@ -12,6 +12,7 @@ import (
 	"github.com/wyw14/cry-161/internal/source"
 	"github.com/wyw14/cry-161/internal/substrate"
 	"github.com/wyw14/cry-161/internal/vacuum"
+	"log"
 	"os"
 )
 
@@ -20,6 +21,7 @@ type Service struct {
 	Recipes  *recipe.Store
 	Drafts   *recipe.DraftBook
 	Carrier  *substrate.Carrier
+	Carriers *substrate.ChainRegistry
 	Chamber  *chamber.Chamber
 	Vacuum   *vacuum.Controller
 	Source   *source.Controller
@@ -35,7 +37,11 @@ func New() *Service {
 	if dir == "" {
 		dir = "data"
 	}
-	return &Service{Runs: run.NewRegistry(), Recipes: recipes, Drafts: recipe.NewDraftBook(), Carrier: substrate.NewCarrier(), Chamber: chamber.New("coat-01"), Vacuum: vacuum.NewController(), Source: source.NewController(100), Rotation: rotation.NewController(), Journal: journal.New(dir)}
+	carriers := substrate.NewChainRegistry(substrate.NewChainStore(dir))
+	if err := carriers.Recover(); err != nil {
+		log.Printf("carrier chain recovery failed: %v", err)
+	}
+	return &Service{Runs: run.NewRegistry(), Recipes: recipes, Drafts: recipe.NewDraftBook(), Carrier: substrate.NewCarrier(), Carriers: carriers, Chamber: chamber.New("coat-01"), Vacuum: vacuum.NewController(), Source: source.NewController(100), Rotation: rotation.NewController(), Journal: journal.New(dir)}
 }
 func (s *Service) RecipesList() []*model.Recipe { return s.Recipes.List() }
 func (s *Service) RunsList() []*model.Run       { return s.Runs.List() }
